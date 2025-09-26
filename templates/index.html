@@ -1,1 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/static/favicon.ico">
+    <title>burnote</title>
+    <!-- Подключение Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <script src="/service-worker.js"></script>
+    <!-- Иконки Font Awesome для кнопки полноэкранного режима -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .highlight {
+            background-color: yellow;
+        }
+
+        .dark-mode .highlight {
+            background-color: #5a4f00;
+        }
+
+        .remove-btn {
+            margin-left: 10px;
+            cursor: pointer;
+            color: red;
+        }
+
+        #download-btn {
+            display: none;
+            /* Изначально кнопка скрыта */
+        }
+
+        textarea,
+        #download-btn {
+            width: 100%;
+            box-sizing: border-box;
+            /* Учитывает padding и border в общей ширине */
+            margin-top: 10px;
+        }
+
+        .pomodoro {
+            text-align: center;
+        }
+
+        #timerPom {
+            font-size: 40px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #ffffff;
+            /* Изменено на белый цвет */
+        }
+
+        .dark-mode footer {
+            background-color: #343a40;
+            color: white;
+        }
+
+        footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .dark-mode footer a {
+            color: #7ab8ff;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Стили для темной темы */
+        .dark-mode {
+            background-color: #212529;
+            color: #f8f9fa;
+        }
+
+        .dark-mode textarea,
+        .dark-mode #saved-texts {
+            background-color: #343a40;
+            color: #f8f9fa;
+            border-color: #495057;
+        }
+
+        .dark-mode #timerPom {
+            color: #f8f9fa;
+        }
+
+        /* Стили для переключателя темы */
+        .theme-switch-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .theme-switch .custom-control-label::before {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        .theme-switch .custom-control-input:checked~.custom-control-label::before {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        /* Основные стили для textarea */
+        textarea {
+            background-color: white;
+            color: black;
+            border-color: #ced4da;
+        }
+
+        /* Стили для textarea в темном режиме */
+        .dark-mode textarea,
+        .dark-mode textarea:focus {
+            background-color: #343a40 !important;
+            color: #f8f9fa !important;
+            border-color: #495057 !important;
+        }
+
+        /* Стили для фокуса в темном режиме */
+        .dark-mode textarea:focus {
+            box-shadow: 0 0 0 0.2rem rgba(130, 138, 145, 0.5);
+            outline: none;
+        }
+
+        /* Стили для таймера в темном режиме */
+        .dark-mode #timerPom {
+            background-color: transparent;
+            color: #f8f9fa;
+        }
+
+        .dark-mode #timerPom:focus {
+            background-color: #343a40;
+            color: #f8f9fa;
+            outline: none;
+        }
+
+        /* Стили для кнопки полноэкранного режима */
+        .fullscreen-btn {
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #6c757d;
+            transition: color 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            color: #007bff;
+        }
+
+        .dark-mode .fullscreen-btn {
+            color: #adb5bd;
+        }
+
+        .dark-mode .fullscreen-btn:hover {
+            color: #7ab8ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="theme-switch-wrapper">
+        <div class="theme-switch custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="themeSwitch">
+            <label class="custom-control-label" for="themeSwitch">Темная тема</label>
+        </div>
+        <i class="fas fa-expand fullscreen-btn" id="fullscreenBtn" title="Полноэкранный режим"></i>
+    </div>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="pomodoro">
+                    <div id="timerPom" contenteditable="true">25:00</div>
+                </div>
+                <textarea id="textarea" class="form-control mb-3" rows="4" placeholder="Введите текст..."></textarea>
+                <button id="download-btn" class="btn btn-warning">Сохранить и очистить список</button>
+                <br>
+                <div id="saved-texts" class="mb-3"></div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        Автор: <a href="https://t.me/Vladimir_Chamin" target="_blank">Владимир Чамин</a>
+        - <a href="#" data-toggle="modal" data-target="#courseModal">Курс</a> - <a
+            href="https://t.me/tribute/app?startapp=dmj8" target="_blank">Отблагодарить</a>
+    </footer>
+    <!-- Модальное окно -->
+    <div class="modal fade" id="courseModal" tabindex="-1" role="dialog" aria-labelledby="courseModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <video controls width="100%">
+                        <source src="static/data/video.mp4" type="video/mp4">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Подключение Bootstrap JS и зависимостей -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="/static/js/burnote.js"></script>
+
+    <script>
+        // Переключение темы
+        document.addEventListener('DOMContentLoaded', function () {
+            const themeSwitch = document.getElementById('themeSwitch');
+
+            // Проверяем сохраненную тему
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeSwitch.checked = true;
+            }
+
+            themeSwitch.addEventListener('change', function () {
+                if (this.checked) {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            // Полноэкранный режим
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+            fullscreenBtn.addEventListener('click', function () {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Ошибка при попытке перейти в полноэкранный режим: ${err.message}`);
+                    });
+                    fullscreenBtn.classList.replace('fa-expand', 'fa-compress');
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                        fullscreenBtn.classList.replace('fa-compress', 'fa-expand');
+                    }
+                }
+            });
+
+            // Следим за изменениями полноэкранного режима
+            document.addEventListener('fullscreenchange', function () {
+                if (!document.fullscreenElement) {
+                    fullscreenBtn.classList.replace('fa-compress', 'fa-expand');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
