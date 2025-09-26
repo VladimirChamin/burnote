@@ -1,10 +1,11 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
-app = FastAPI(title="Popugai App")
+app = FastAPI()
 
-@app.get("/")
-async def get_popugai():
-    return {"message": "Hi popugai"}
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return "<h1>Hi popugai</h1>"
 
 if __name__ == "__main__":
     import uvicorn
